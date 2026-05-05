@@ -1,0 +1,5 @@
+.vscode/
+backend/__pycache__
+extract.py
+audios*/
+frontend/node_modules/

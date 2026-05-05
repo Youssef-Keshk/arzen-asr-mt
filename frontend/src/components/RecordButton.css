@@ -1,0 +1,75 @@
+.record-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.record-btn {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: none;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 26px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition), transform var(--transition);
+  outline: 2px solid var(--border);
+  outline-offset: 2px;
+}
+
+.record-btn:hover:not(:disabled) {
+  background: rgba(255, 69, 69, 0.1);
+  outline-color: var(--recording);
+  transform: scale(1.05);
+}
+
+.record-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Active / recording state */
+.record-btn--active {
+  background: rgba(255, 69, 69, 0.15);
+  outline-color: var(--recording);
+}
+
+/* Pulsing ring that appears only while recording */
+.record-ring {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 2px solid var(--recording);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.record-btn--active .record-ring {
+  animation: ring-pulse 1.4s ease-out infinite;
+}
+
+@keyframes ring-pulse {
+  0%   { transform: scale(1);    opacity: 0.8; }
+  70%  { transform: scale(1.35); opacity: 0;   }
+  100% { transform: scale(1.35); opacity: 0;   }
+}
+
+.record-icon {
+  position: relative;
+  z-index: 1;
+  line-height: 1;
+}
+
+.record-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--muted);
+  text-align: center;
+  max-width: 160px;
+}
