@@ -1,35 +1,55 @@
-# VoiceBridge — ASR & MT Scaffolding
+# ArzEn Speech Intelligence Platform
 
-A fully functional UI and data pipeline for Automatic Speech Recognition (ASR)
-and Machine Translation (MT). ML inference is abstracted behind mock async
-functions — swap them out for real models when ready.
+A full-stack web application for **code-switched Egyptian Arabic–English** Automatic Speech Recognition (ASR) and Machine Translation (MT), built with a fine-tuned Whisper model and a quantized Llama-3 translation model served entirely locally.
 
 ---
 
 ## Project Structure
 
 ```
-asr-mt-app/
+arzen-asr-mt/
 ├── backend/
-│   ├── main.py              # FastAPI app — REST upload + WebSocket streaming
+│   ├── api.py               # FastAPI route definitions — REST + WebSocket endpoints
+│   ├── config.py            # Model IDs, device config, inference constants
+│   ├── inference.py         # run_asr() and run_mt() — model inference logic
+│   ├── ml_models.py         # Lazy singleton loaders for Whisper and Llama
+│   ├── main.py              # FastAPI app instantiation and startup
+│   ├── utils.py             # Audio decoding (PyAV) and confidence scoring
 │   └── requirements.txt
 └── frontend/
     ├── public/
-    │   └── index.html
+    │   ├── index.html
+    │   ├── manifest.json
+    │   ├── robots.txt
+    │   └── gayar.png               # Tab logo
     ├── src/
-    │   ├── index.js         # React entry point
-    │   ├── index.css        # Global tokens & reset
-    │   ├── App.js           # Root component — state orchestration
+    │   ├── index.jsx               # React entry point
+    │   ├── index.css               # Global design tokens
+    │   ├── App.jsx                 # Root component — state orchestration
     │   ├── App.css
     │   └── components/
-    │       ├── Header.js / .css
-    │       ├── InputPanel.js / .css     # Upload zone + mic button
-    │       ├── RecordButton.js / .css   # MediaRecorder + WebSocket client
-    │       ├── ResultsPanel.js / .css   # Audio player + export button
-    │       ├── TranscriptPanel.js / .css # ASR output + confidence highlights
-    │       └── TranslationPanel.js / .css # MT output
+    │       ├── Header.jsx / .css
+    │       ├── InputPanel.jsx / .css       # Upload zone + mic button
+    │       ├── RecordButton.jsx / .css     # MediaRecorder + WebSocket client
+    │       ├── ResultsPanel.jsx / .css     # Audio player + export button
+    │       ├── TranscriptPanel.jsx / .css  # ASR output + confidence highlights
+    │       └── TranslationPanel.jsx / .css # MT output
     └── package.json
 ```
+
+---
+
+## Models
+
+| Role | Model | Format | Size |
+|---|---|---|---|
+| ASR | [ahmedheakl/arazn-whisper-medium](https://huggingface.co/ahmedheakl/arazn-whisper-medium) | HuggingFace Transformers | ~1.5 GB |
+| ASR Tokenizer | [openai/whisper-medium](https://huggingface.co/openai/whisper-medium) | HuggingFace Transformers | ~2 MB |
+| MT | [ahmedheakl/arazn-llama3-english-gguf](https://huggingface.co/ahmedheakl/arazn-llama3-english-gguf) | GGUF Q4_K_M (llama.cpp) | ~4.9 GB |
+
+> **Note:** Both models run **locally** — no API keys or internet connection required after the initial download. Models are cached at `C:\Users\<you>\.cache\huggingface\hub\`.
+
+> **Note on tokenizer:** The fine-tuned Whisper checkpoint was saved with a broken tokenizer (vocab_size=0). The base `openai/whisper-medium` tokenizer is loaded instead — it is identical to what the model was trained with.
 
 ---
 
@@ -40,25 +60,34 @@ asr-mt-app/
 ```bash
 cd backend
 
-# Create and activate a virtual environment (recommended)
 python -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
+.venv\Scripts\activate        # Windows
+# source .venv/bin/activate   # macOS / Linux
 
-# Install dependencies
 pip install -r requirements.txt
+```
 
-# Run the server
+**GPU build for Llama (recommended — much faster):**
+```bash
+pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cu121
+```
+Replace `cu121` with your CUDA version. For CPU-only, skip this step.
+
+```bash
 uvicorn main:app --reload --port 8000
 ```
 
-The API is now available at `http://localhost:8000`.
-Interactive docs: `http://localhost:8000/docs`
+**Pre-load both models before serving requests (~6.4 GB total download on first run):**
+```bash
+curl -X POST http://localhost:8000/warmup
+```
+Poll `http://localhost:8000/health` — when both `asr_loaded` and `mt_loaded` are `true`, the app is ready.
 
 ---
 
 ### 2 — Frontend
 
-Open a **new terminal tab**:
+Open a new terminal:
 
 ```bash
 cd frontend
@@ -66,9 +95,7 @@ npm install
 npm start
 ```
 
-The React dev server starts at `http://localhost:3000` and proxies all
-`/transcribe` and `/ws/*` requests to `http://localhost:8000` via the
-`"proxy"` field in `package.json`.
+Opens at `http://localhost:3000`. All `/transcribe` and `/ws/*` requests are proxied to the backend via the `"proxy"` field in `package.json`.
 
 ---
 
@@ -76,44 +103,33 @@ The React dev server starts at `http://localhost:3000` and proxies all
 
 | Feature | How it works |
 |---|---|
-| **File upload** | Drag-and-drop or click the upload zone → `POST /transcribe` → mock batch ASR + MT |
-| **Mic recording** | Click the mic button → `MediaRecorder` streams binary chunks via WebSocket `/ws/stream` → mock streaming ASR emits words progressively |
+| **File upload** | Drag-and-drop or click → `POST /transcribe` → Whisper ASR + Llama MT |
+| **Mic recording** | MediaRecorder streams binary chunks over WebSocket `/ws/stream` → incremental transcript updates |
 | **Confidence highlighting** | Words with `confidence < 0.6` get an amber wavy underline; hover for exact score |
-| **Side-by-side panels** | ASR (Egyptian Arabic, RTL) on the left; MT (English) on the right; both update simultaneously |
-| **Audio playback** | Uploaded file or recorded audio plays in an HTML5 `<audio>` element |
-| **Export** | "Export Results" downloads `transcript.txt` and `translation.txt` simultaneously |
-
----
-
-## Replacing Mock Functions
-
-All three mock functions live in `backend/main.py`:
-
-```python
-async def mock_batch_asr(audio_bytes: bytes) -> list[dict]: ...
-async def mock_streaming_asr(chunk: bytes) -> list[dict] | None: ...
-async def mock_translate(words: list[dict]) -> str: ...
-```
-
-Replace their bodies with real model calls (e.g. Whisper, SeamlessM4T, NLLB).
-The rest of the pipeline — WebSocket lifecycle, REST endpoint, frontend rendering
-— requires no changes.
+| **Side-by-side panels** | ASR (Egyptian Arabic, RTL) on the left; MT (English) on the right |
+| **Audio playback** | Uploaded or recorded audio plays in an HTML5 `<audio>` element |
+| **Export** | Downloads `transcript.txt` and `translation.txt` simultaneously |
 
 ---
 
 ## API Reference
 
 ### `POST /transcribe`
-- **Body**: `multipart/form-data` with field `file` (audio file)
-- **Response**: `{ job_id, filename, words: [{word, confidence}], translation }`
+- **Body**: `multipart/form-data` with field `file` (WAV, MP3, OGG, WebM)
+- **Response**: `{ job_id, filename, words: [{word, confidence}], translation, raw_text }`
 
 ### `WS /ws/stream`
-- Client sends binary audio blobs (from `MediaRecorder`)
-- Server emits JSON messages:
-  - `{ type: "words", data: [{word, confidence}] }` — incremental transcript
-  - `{ type: "translation", data: "..." }` — final MT result (on disconnect)
-  - `{ type: "done" }` — session complete
-  - `{ type: "error", message: "..." }` — error
+Client sends:
+- **Binary frames** — raw audio chunks from `MediaRecorder`
+- **Text frame** — `{ type: "stop" }` when recording stops
+
+Server emits:
+- `{ type: "words", data: [{word, confidence}] }` — incremental transcript
+- `{ type: "translation", data: "..." }` — MT result (sent on stop)
+- `{ type: "done" }` — session complete
 
 ### `GET /health`
-- Returns `{ status: "ok" }`
+Returns `{ status, device, asr_loaded, mt_loaded }`
+
+### `POST /warmup`
+Triggers background loading of both models. Poll `/health` to track progress.
