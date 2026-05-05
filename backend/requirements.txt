@@ -1,0 +1,25 @@
+# Web framework
+fastapi==0.111.0
+uvicorn[standard]==0.29.0
+python-multipart==0.0.9
+
+# ASR — Whisper fine-tune
+transformers>=4.39.0
+torch>=2.1.0
+accelerate>=0.27.0
+
+# MT — Llama GGUF via llama.
+# 1- If you have an NVIDIA GPU (copy & paste into cli):
+# pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/cu121
+# 2- CPU-only build (uncomment if you don't have an NVIDIA GPU):
+# llama-cpp-python>=0.2.90
+
+huggingface_hub>=0.22.0     # for hf_hub_download (GGUF cache management)
+
+# Audio decoding — PyAV bundles its own FFmpeg, no ffmpeg.exe needed on Windows
+av>=12.0.0
+
+# Numerical
+scipy>=1.12.0
+numpy>=1.24.0
+soundfile>=0.12.1
