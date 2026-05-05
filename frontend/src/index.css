@@ -1,0 +1,45 @@
+/* ── Global Reset & Design Tokens ─────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@300;400;600&family=Syne:wght@700;800&display=swap');
+
+:root {
+  --bg:          #0d0f14;
+  --surface:     #161920;
+  --border:      #252830;
+  --accent:      #4fffb0;      /* mint green — ASR */
+  --accent2:     #ff6b6b;      /* coral — confidence highlight */
+  --accent3:     #7eb8ff;      /* sky blue — MT */
+  --text:        #e8eaf0;
+  --muted:       #5c6070;
+  --recording:   #ff4545;
+  --font-mono:   'IBM Plex Mono', monospace;
+  --font-sans:   'IBM Plex Sans Arabic', sans-serif;
+  --font-display:'Syne', sans-serif;
+  --radius:      8px;
+  --transition:  160ms ease;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.6;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Thin scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+/* ── Utility ───────────────────────────────────────────────────────────── */
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0);
+  border: 0;
+}
